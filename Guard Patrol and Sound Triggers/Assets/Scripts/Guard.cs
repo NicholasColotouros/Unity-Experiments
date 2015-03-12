@@ -6,11 +6,11 @@ public class Guard : MonoBehaviour
 	public Transform Player;
 	public float FOV;
 	public float PatrolSpeed;
-	public Transform[] PatrolWayPoints;
+	public Transform CurrentWayPoint;
 
 	private NavMeshAgent Agent;
 	private AudioSource Detected;
-	private int WayPointIndex;
+	private Vector3 LastWayPoint;
 
 	private bool ClipPlayed;
 
@@ -21,8 +21,15 @@ public class Guard : MonoBehaviour
 		Detected = gameObject.GetComponent<AudioSource> ();
 		ClipPlayed = false;
 
-		WayPointIndex = 0;
-		Agent.destination = PatrolWayPoints [WayPointIndex].position;
+		Vector3 LastWayPoint = CurrentWayPoint.transform.position;
+		Transform[] destinations = CurrentWayPoint.GetComponent<WayPointNode> ().AdjacentWayPoints;
+		CurrentWayPoint = destinations [Random.Range (0, destinations.Length)];
+		Agent.destination = CurrentWayPoint.position;
+
+		// Move the FOV markers to correspond to the guard's FOV
+		float rotationAngle = FOV / 2;
+		gameObject.transform.FindChild("LeftPivot").Rotate( new Vector3(0, rotationAngle, 0));
+		gameObject.transform.FindChild("RightPivot").Rotate( new Vector3(0, -1 * rotationAngle, 0));
 	}
 	
 	// Update is called once per frame
@@ -68,10 +75,20 @@ public class Guard : MonoBehaviour
 		Agent.speed = PatrolSpeed;
 		if( Agent.destination.x == gameObject.transform.position.x && Agent.destination.z == gameObject.transform.position.z)
 		{
-			WayPointIndex++;
-			if( WayPointIndex == PatrolWayPoints.Length ) WayPointIndex = 0;
-		
-			Agent.destination = PatrolWayPoints[WayPointIndex].position;
+			Vector3 LastWayPoint = CurrentWayPoint.transform.position;
+
+			// Pick the next waypoint randomly. If the previous waypoint is selected, pick the next index
+			Transform[] destinations = CurrentWayPoint.GetComponent<WayPointNode> ().AdjacentWayPoints;
+
+			int index = Random.Range (0, destinations.Length);
+			CurrentWayPoint = destinations [index];
+
+			if(CurrentWayPoint.position == LastWayPoint)
+			{
+				CurrentWayPoint = destinations [ (index + 1) % destinations.Length];
+			}
+
+			Agent.destination = CurrentWayPoint.position;
 		}
 	}
 }
